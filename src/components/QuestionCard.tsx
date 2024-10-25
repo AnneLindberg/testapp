@@ -1,14 +1,31 @@
 // QuestionCard.tsx
-import React, { useState, useRef  } from "react";
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Animated  } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+} from "react-native";
 import { RouteProp } from "@react-navigation/core";
 import { MainStackParamList } from "../NavigationParamList";
+import { ArrowLeft, MoveRight, Heart } from "lucide-react-native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import {
+  PlayfairDisplay_500Medium,
+  PlayfairDisplay_600SemiBold,
+} from "@expo-google-fonts/playfair-display";
+import {
+  CrimsonPro_400Regular,
+  CrimsonPro_500Medium,
+} from "@expo-google-fonts/crimson-pro";
 
 type QuestionCardProps = {
-    route: RouteProp<MainStackParamList, "QuestionCard">;
+  route: RouteProp<MainStackParamList, "QuestionCard">;
+  navigation: StackNavigationProp<MainStackParamList, "QuestionCard">;
 };
 
-const questions = [
+const questionsData  = [
 { id: 1, text: "What's your best memory between us?", categories: ["The Friendly Talks", "The Love Talks"] },
 { id: 2, text: "What's your favorite thing about me?", categories: ["The Friendly Talks", "The Love Talks", "The Deep Talks"] },
 { id: 3, text: "What was your first impression of me?", categories: ["The First Talks"] },
@@ -132,114 +149,196 @@ const questions = [
 
 ];
 
-const { width, height } = Dimensions.get("window");
-const cardWidth = width * 0.8;
-const cardHeight = height * 0.5;
-
-export function QuestionCard({ route }: QuestionCardProps) {
+export function QuestionCard({ route, navigation }: QuestionCardProps) {
     const { category } = route.params;
-    const [currentQuestion, setCurrentQuestion] = useState(getRandomQuestion(category));
-    const [nextQuestion, setNextQuestion] = useState(getRandomQuestion(category));
-    const slideAnim = useRef(new Animated.Value(0)).current;
-    const fadeAnim = useRef(new Animated.Value(1)).current;
-    const handleTap = () => {
-        setCurrentQuestion(getRandomQuestion(category));
-    };
-
-    function getRandomQuestion(category: string) {
-        const filteredQuestions = questions.filter(q => q.categories.includes(category));
-        return filteredQuestions.length > 0 
-            ? filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)]
-            : { id: 0, text: "No questions available for this category.", categories: [category] };
-    }
-    
-
-    const handlePress = () => {
-        Animated.parallel([
-            Animated.timing(slideAnim, {
-                toValue: -width,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-            Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setCurrentQuestion(nextQuestion);
-            setNextQuestion(getRandomQuestion(category));
-            slideAnim.setValue(width);
-            fadeAnim.setValue(0);
-
-            Animated.parallel([
-                Animated.timing(slideAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        });
-    };
-
-    return (
-        <View style={styles.container}>
-            <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-                <Animated.View
-                    style={[
-                        styles.card,
-                        {
-                            transform: [{ translateX: slideAnim }],
-                            opacity: fadeAnim,
-                        },
-                    ]}
-                >
-                    <Text style={styles.questionText}>{currentQuestion.text}</Text>
-                </Animated.View>
-            </TouchableOpacity>
-            <Text style={styles.instructionText}>Tap the card for a new question</Text>
-        </View>
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [fadeAnim] = useState(new Animated.Value(1));
+  
+    const questions = questionsData.filter((q) =>
+      q.categories.includes(category)
     );
-}
-
-const styles = StyleSheet.create({
+    const categoryTitle = category;
+  
+    const nextQuestion = () => {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+  
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % questions.length);
+      }, 300);
+    };
+  
+    return (
+      <View style={styles.container}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.backButtonPressed,
+          ]}
+        >
+          <ArrowLeft size={20} color="#4B5563" />
+          <Text style={styles.backButtonText}>Return to Categories</Text>
+        </Pressable>
+  
+        <View style={styles.card}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{categoryTitle}</Text>
+            <Text style={styles.subtitle}>
+              Take your time to reflect on each question. There's no rush—the best
+              conversations unfold naturally.
+            </Text>
+          </View>
+  
+          <Animated.View
+            style={[styles.questionContainer, { opacity: fadeAnim }]}
+          >
+            <Text style={styles.question}>
+              {questions[currentIndex]?.text ||
+                "No questions available for this category."}
+            </Text>
+          </Animated.View>
+  
+          <View style={styles.footer}>
+            <Pressable
+              onPress={nextQuestion}
+              style={({ pressed }) => [
+                styles.nextButton,
+                pressed && styles.nextButtonPressed,
+              ]}
+            >
+              <Text style={styles.nextButtonText}>Next Question</Text>
+              <MoveRight size={20} color="#6B7280" />
+            </Pressable>
+  
+            <View style={styles.counter}>
+              <Heart size={14} color="#6B7280" />
+              <Text style={styles.counterText}>
+                Question {currentIndex + 1} of {questions.length}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+  
+  const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#f0f0f0",
-        padding: 20,
+      flex: 1,
+      padding: 16,
+      backgroundColor: "#FCF9F3",
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 32,
+      paddingVertical: 4,
+    },
+    backButtonPressed: {
+      opacity: 0.7,
+    },
+    backButtonText: {
+      fontFamily: "CrimsonPro_400Regular",
+      fontSize: 18,
+      color: "#4B5563",
+      fontStyle: "italic",
+      marginLeft: 8,
     },
     card: {
-        width: cardWidth,
-        height: cardHeight,
-        backgroundColor: "white",
-        borderRadius: 10,
-        padding: 20,
-        justifyContent: "center",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+      backgroundColor: "#F3F4F6",
+      borderRadius: 16,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: "#D1D5DB80",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 4,
     },
-    questionText: {
-        fontSize: 24,
-        textAlign: "center",
-        color: "#333",
+    header: {
+      alignItems: "center",
+      marginBottom: 40,
     },
-    instructionText: {
-        marginTop: 20,
-        fontSize: 16,
-        color: "#666",
+    title: {
+      fontFamily: "PlayfairDisplay_600SemiBold",
+      fontSize: 28,
+      color: "#1F2937",
+      marginBottom: 16,
+      textAlign: "center",
     },
-});
+    subtitle: {
+      fontFamily: "CrimsonPro_400Regular",
+      fontSize: 16,
+      color: "#4B5563",
+      textAlign: "center",
+      fontStyle: "italic",
+      lineHeight: 24,
+    },
+    questionContainer: {
+      minHeight: 180,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 40,
+    },
+    question: {
+      fontFamily: "PlayfairDisplay_500Medium",
+      fontSize: 24,
+      color: "#1F2937",
+      textAlign: "center",
+      lineHeight: 32,
+    },
+    footer: {
+      alignItems: "center",
+    },
+    nextButton: {
+      backgroundColor: "#F3F4F6",
+      borderWidth: 1,
+      borderColor: "#D1D5DB80",
+      borderRadius: 12,
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    nextButtonPressed: {
+      transform: [{ scale: 0.98 }],
+    },
+    nextButtonText: {
+      fontFamily: "PlayfairDisplay_500Medium",
+      fontSize: 18,
+      color: "#1F2937",
+      marginRight: 8,
+    },
+    counter: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: 16,
+    },
+    counterText: {
+      fontFamily: "CrimsonPro_400Regular",
+      fontSize: 16,
+      color: "#4B5563",
+      fontStyle: "italic",
+      marginLeft: 8,
+    },
+  });
+  
+  export default QuestionCard;
